@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A501 Lab Log System</title>
+
+<!-- PWA / Add to Home Screen support -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#20242A">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="A501 Lab">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --paper:#f3efe6;
+    --ink:#20242a;
+    --graphite:#3a4048;
+    --line:#d9d2c1;
+    --panel:#fbf9f4;
+    --amber:#c07a2c;
+    --amber-soft:#f1ddb8;
+    --teal:#2f6f63;
+    --teal-soft:#d9ece6;
+    --rust:#a83e2c;
+    --rust-soft:#f2dcd6;
+    --slate:#5b6672;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;}
+  #app{max-width:760px;margin:0 auto;min-height:100vh;background:var(--paper);display:flex;flex-direction:column;}
+
+  .topbar{border-bottom:2px solid var(--ink);padding:18px 20px 14px;}
+  .topbar-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+  .brand{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;letter-spacing:0.01em;}
+  .brand small{display:block;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10.5px;color:var(--slate);letter-spacing:0.08em;text-transform:uppercase;margin-top:2px;}
+  .id-tag{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--slate);border:1px solid var(--line);padding:3px 8px;border-radius:var(--radius);white-space:nowrap;}
+
+  nav.tabs{display:flex;border-bottom:2px solid var(--ink);}
+  nav.tabs button{flex:1;padding:11px 6px;background:var(--paper);border:none;border-right:1px solid var(--line);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--slate);cursor:pointer;}
+  nav.tabs button:last-child{border-right:none;}
+  nav.tabs button.active{background:var(--ink);color:var(--paper);}
+
+  main{flex:1;padding:20px;padding-bottom:60px;}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--amber);margin:0 0 6px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:22px;margin:0 0 6px;}
+  h2{font-family:'Space Grotesk',sans-serif;font-size:16px;margin:0 0 10px;}
+  p.lead{color:var(--slate);font-size:13.5px;line-height:1.5;margin:0 0 16px;}
+
+  label.field{display:block;margin-bottom:14px;}
+  label.field span.lbl{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--graphite);margin-bottom:5px;}
+  select, input[type=text], input[type=date], input[type=time], input[type=number], textarea{
+    width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;
+    font-family:'Inter',sans-serif;font-size:14px;color:var(--ink);
+  }
+  textarea{resize:vertical;min-height:64px;}
+  select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%235b6672'/></svg>");background-repeat:no-repeat;background-position:right 12px center;padding-right:28px;}
+
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  button.primary{background:var(--ink);color:var(--paper);border:none;padding:12px 18px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;border-radius:var(--radius);cursor:pointer;}
+  button.primary:hover{background:var(--graphite);}
+  button.secondary{background:transparent;color:var(--ink);border:1px solid var(--ink);padding:11px 16px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;border-radius:var(--radius);cursor:pointer;}
+  button.ghost{background:none;border:none;color:var(--slate);font-family:'IBM Plex Mono',monospace;font-size:11px;text-decoration:underline;cursor:pointer;padding:4px 0;}
+  button.small{padding:6px 10px;font-size:10.5px;}
+  button.danger{color:var(--rust);border-color:var(--rust);}
+
+  .status-pill{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:3px 9px;border-radius:20px;letter-spacing:0.03em;}
+  .status-ok{background:var(--teal-soft);color:var(--teal);}
+  .status-warn{background:var(--amber-soft);color:var(--amber);}
+  .status-bad{background:var(--rust-soft);color:var(--rust);}
+
+  .checklist-row{display:grid;grid-template-columns:26px 1fr 128px;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--line);}
+  .checklist-row .num{font-family:'IBM Plex Mono',monospace;color:var(--slate);font-size:12px;padding-top:2px;}
+  .checklist-row .txt{font-size:13.5px;line-height:1.4;}
+  .checklist-note{grid-column:2/4;margin-top:8px;}
+
+  table.recs{width:100%;border-collapse:collapse;font-size:12px;}
+  table.recs th{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:var(--slate);border-bottom:2px solid var(--ink);padding:6px 8px;white-space:nowrap;}
+  table.recs td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .table-wrap{overflow-x:auto;}
+
+  .banner{background:var(--teal-soft);border:1px solid var(--teal);color:var(--teal);padding:12px 14px;border-radius:var(--radius);font-size:13.5px;margin-bottom:16px;}
+  .empty{text-align:center;color:var(--slate);padding:30px 10px;font-size:13px;}
+
+  .eq-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);gap:10px;}
+  .eq-row .eq-name{font-size:14px;}
+  .eq-row .eq-meta{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--slate);}
+
+  .qr-box{background:#fff;border:1px solid var(--line);padding:20px;display:flex;flex-direction:column;align-items:center;gap:12px;border-radius:var(--radius);}
+  .qr-url{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--slate);word-break:break-all;text-align:center;}
+
+  .toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+  .toggle-row input{width:auto;}
+  .toggle-row span{font-size:13px;}
+
+  .footer-note{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--slate);text-align:center;padding:14px 20px 30px;}
+  .search-row{display:flex;gap:8px;margin-bottom:12px;}
+  .search-row input{flex:1;}
+
+  /* ---------- Onboarding walkthrough ---------- */
+  .intro-overlay{position:fixed;inset:0;background:rgba(32,36,42,0.92);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .intro-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);max-width:400px;width:100%;padding:30px 26px 22px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,0.35);}
+  .intro-icon-wrap{height:120px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;}
+  .intro-title{font-family:'Space Grotesk',sans-serif;font-size:19px;margin:0 0 8px;}
+  .intro-body{font-size:13.5px;color:var(--slate);line-height:1.5;margin:0 0 6px;min-height:56px;}
+  .intro-dots{display:flex;gap:6px;justify-content:center;margin:16px 0 18px;}
+  .intro-dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:background .3s;}
+  .intro-dot.active{background:var(--amber);}
+  .intro-btnrow{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .intro-skip{background:none;border:none;color:var(--slate);font-family:'IBM Plex Mono',monospace;font-size:11px;text-decoration:underline;cursor:pointer;}
+  .intro-next{background:var(--ink);color:var(--paper);border:none;padding:10px 20px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.05em;text-transform:uppercase;border-radius:var(--radius);cursor:pointer;}
+  .replay-link{background:none;border:none;color:var(--slate);font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-decoration:underline;cursor:pointer;padding:0;margin-top:2px;}
+
+  @keyframes introScan{0%{transform:translateY(-30px);opacity:0;}15%{opacity:1;}85%{opacity:1;}100%{transform:translateY(30px);opacity:0;}}
+  @keyframes introFadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes introBlink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
+  @keyframes introSlideIn{from{transform:translateX(-14px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+  @keyframes introPop{0%{transform:scale(0.6);opacity:0;}70%{transform:scale(1.08);opacity:1;}100%{transform:scale(1);opacity:1;}}
+  .intro-scanline{animation:introScan 1.8s ease-in-out infinite;}
+  .intro-item{animation:introFadeUp .4s ease both;}
+  .intro-item:nth-child(1){animation-delay:.1s;}
+  .intro-item:nth-child(2){animation-delay:.35s;}
+  .intro-item:nth-child(3){animation-delay:.6s;}
+  .intro-cursor{animation:introBlink 1s step-end infinite;}
+  .intro-row{animation:introSlideIn .5s ease both;animation-delay:.5s;}
+  .intro-check{animation:introPop .4s ease both;animation-delay:1s;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ============================= STORAGE HELPERS ============================= */
+const SHARED = true; // all lab data is shared across every user of this system
+const DEFAULT_CONFIG = {
+  labName: "A501 Lab",
+  sheetsUrl: "https://script.google.com/macros/s/AKfycbwHDncJl4LqI8zDe8eCYSPhuAaMRzL6PFOwL4GpXPEjo9jIM-9qTUmYsFoG0cXlzlzajQ/exec",
+  adminPin: "1234",
+  equipment: [
+    { id: "fs_laser",     name: "Fs Laser (20W)",                    envFields: true  },
+    { id: "uvvis",        name: "UV-VIS Spectrometer",                envFields: true  },
+    { id: "ftir",         name: "FTIR",                               envFields: true  },
+    { id: "plasma",       name: "Plasma Cleaning Machine",            envFields: false },
+    { id: "electrochem",  name: "Electrochemical Workstation",        envFields: false },
+    { id: "confocal",     name: "3D Surface Profiler (Confocal)",     envFields: false }
+  ],
+  dailyItems: [
+    "FS 120W laser + Chiller + Work station + Suction system + Computers",
+    "3D scanner for contouring",
+    "Aerotech Work Station",
+    "Fs laser + Shutter + Chiller + Work station + Suction system + Computers",
+    "Ns laser + Chiller + Translation stages + Suction system + Computers",
+    "Ultrasonic Cleaner",
+    "Oven",
+    "Vacuum Oven",
+    "Plasma Cleaning machine + Air compressor",
+    "UV-VIS spectrometer",
+    "Spin Coater",
+    "Weight Balance",
+    "Electro-Chemical workstation + Computers",
+    "3D confocal microscope + computer",
+    "Contact angle meter",
+    "FTIR + Computer",
+    "Hot plate",
+    "3D Printer",
+    "Close the fume hood sash completely",
+    "All chemicals bottles capped",
+    "Remove the top sheet of the sticky mat if dirty or no longer sticky.",
+    "Room light + Fume hood's light"
+  ]
+};
+
+async function storageGet(key, fallback){
+  try{
+    if(window.storage){
+      const r = await window.storage.get(key, SHARED);
+      if(!r) return fallback;
+      return JSON.parse(r.value);
+    }
+  }catch(e){ /* fall through to localStorage */ }
+  try{
+    const raw = localStorage.getItem("lls:"+key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(e){ return fallback; }
+}
+async function storageSet(key, value){
+  try{
+    if(window.storage){
+      await window.storage.set(key, JSON.stringify(value), SHARED);
+      return true;
+    }
+  }catch(e){ /* fall through to localStorage */ }
+  try{ localStorage.setItem("lls:"+key, JSON.stringify(value)); return true; }
+  catch(e){ console.error("storage set failed", e); return false; }
+}
+
+/* Push the shared parts of config (equipment list, lab name) into the Google Sheet's
+   Config tab, so every device — regardless of how this page is hosted — sees the same
+   equipment list and lab name, not just whoever's local browser storage. */
+async function syncConfigToSheet(authPin){
+  if(!STATE.config.sheetsUrl) return;
+  try{
+    await fetch(STATE.config.sheetsUrl, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'setConfig', adminPin: (authPin!==undefined?authPin:STATE.config.adminPin)||'', config:{
+        equipment_json: JSON.stringify(STATE.config.equipment),
+        lab_name: STATE.config.labName,
+        admin_pin: STATE.config.adminPin || "1234",
+        daily_items_json: JSON.stringify(STATE.config.dailyItems)
+      }})
+    });
+  }catch(e){ console.error("config sync to sheet failed", e); }
+}
+
+/* Pull the shared parts of config down from the Sheet on load, so a fresh device
+   (e.g. someone else's phone scanning the QR code) sees the current equipment list
+   and lab name, not just whatever shipped in this file originally. */
+async function syncConfigFromSheet(){
+  if(!STATE.config.sheetsUrl) return;
+  try{
+    const res = await fetch(STATE.config.sheetsUrl + '?action=config');
+    const remote = await res.json();
+    if(remote && remote.equipment_json){
+      const parsed = JSON.parse(remote.equipment_json);
+      if(Array.isArray(parsed) && parsed.length) STATE.config.equipment = parsed;
+    }
+    if(remote && remote.lab_name){
+      STATE.config.labName = remote.lab_name;
+    }
+    if(remote && remote.admin_pin){
+      STATE.config.adminPin = String(remote.admin_pin);
+    }
+    if(remote && remote.daily_items_json){
+      const parsedItems = JSON.parse(remote.daily_items_json);
+      if(Array.isArray(parsedItems) && parsedItems.length) STATE.config.dailyItems = parsedItems;
+    }
+    if(!remote || !remote.equipment_json || !remote.daily_items_json){
+      // Sheet's Config tab is missing something (first run) — seed it with what we have.
+      await syncConfigToSheet();
+    }
+  }catch(e){ console.error("config sync from sheet failed", e); }
+}
+
+/* ============================= GOOGLE SHEETS BACKEND ============================= */
+/* When STATE.config.sheetsUrl is set (via the Admin tab), every log entry is written
+   directly to the lab's own Google Sheet through a small Apps Script web app, instead
+   of the built-in artifact storage. Records reads live from the sheet too.
+   Config (equipment list, lab name, the Sheets URL itself) always lives in the
+   built-in storage, since it needs to be readable before we know which mode to use. */
+
+const EQUIPMENT_HEADERS = ["Date","Start Time","End Time","Operator","Humidity (%)","Temp (C)","Activity",
+  "Equipment Status","Notes","Submitted At","Session ID","Session Status","Completed At"];
+
+function equipmentEntryToRow(entry){
+  return [entry.date, entry.startTime, entry.endTime, entry.operator, entry.humidity, entry.temp,
+    entry.activity, entry.status, entry.notes, entry.submittedAt,
+    entry.sessionId||"", entry.sessionStatus||"", entry.completedAt||""];
+}
+function rowToEquipmentEntry(row){
+  return { date:row[0]||"", startTime:row[1]||"", endTime:row[2]||"", operator:row[3]||"",
+    humidity:row[4]||"", temp:row[5]||"", activity:row[6]||"",
+    status:row[7]||"",
+    notes:row[8]||"", submittedAt:row[9]||"",
+    sessionId:row[10]||"", sessionStatus:row[11]||"", completedAt:row[12]||"" };
+}
+function generateSessionId(){
+  return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,8);
+}
+function dailyEntryToRow(entry){
+  const base = [entry.date, entry.time, entry.userName];
+  entry.items.forEach(it=> base.push(it.status + (it.extra ? (" — "+it.extra) : "")));
+  base.push(entry.overallComments, entry.submittedAt);
+  return base;
+}
+function rowToDailyEntry(row){
+  const items = STATE.config.dailyItems.map((label, idx)=>{
+    const cell = String(row[3+idx] || "");
+    const dashIdx = cell.indexOf(" — ");
+    const extra = dashIdx>=0 ? cell.slice(dashIdx+3) : "";
+    let status = "Off";
+    if(cell.indexOf("In Use")===0) status = "In Use";
+    else if(cell.indexOf("Support to Turn Off")===0) status = "Support to Turn Off";
+    return { label, status, extra };
+  });
+  return { date:row[0]||"", time:row[1]||"", userName:row[2]||"", items,
+    overallComments:row[3+STATE.config.dailyItems.length]||"", submittedAt:row[3+STATE.config.dailyItems.length+1]||"" };
+}
+
+async function checkTodayChecklist(){
+  const list = await fetchSubmissions("Daily Checklist", "log:daily", rowToDailyEntry);
+  const t = nowParts();
+  return list.find(e=>e.date===t.date) || null;
+}
+async function goToDailyForm(){
+  STATE.dailyFlow = {step:"loading"};
+  STATE.screen = "dailyForm";
+  render();
+  const existing = await checkTodayChecklist();
+  STATE.dailyFlow = existing ? {step:"blocked", existing} : {step:"form"};
+  render();
+}
+
+async function sheetsFetch(url, opts){
+  const res = await fetch(url, opts);
+  return await res.json();
+}
+
+async function appendSubmission(sheetName, rowArray, fallbackKey, fallbackEntry){
+  if(STATE.config.sheetsUrl){
+    try{
+      const data = await sheetsFetch(STATE.config.sheetsUrl, {
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({ action:'append', sheet:sheetName, row: rowArray })
+      });
+      return !!data.ok;
+    }catch(e){ console.error("sheets append failed", e); return false; }
+  } else {
+    const list = await storageGet(fallbackKey, []);
+    list.push(fallbackEntry);
+    return await storageSet(fallbackKey, list);
+  }
+}
+
+async function fetchSubmissions(sheetName, fallbackKey, rowToEntry){
+  if(STATE.config.sheetsUrl){
+    try{
+      const data = await sheetsFetch(STATE.config.sheetsUrl + '?action=list&sheet=' + encodeURIComponent(sheetName));
+      const rows = (data.rows||[]).filter(r=>r.some(c=>c!==""&&c!==null&&c!==undefined));
+      return rows.map(rowToEntry);
+    }catch(e){ console.error("sheets list failed", e); return []; }
+  } else {
+    return await storageGet(fallbackKey, []);
+  }
+}
+
+/* Equipment check-in / check-out support. A "session" is one equipment-use cycle:
+   started with a Start entry (Session Status = Open), later completed by finding
+   that same row (via its Session ID) and filling in the end time / status / notes
+   (Session Status = Closed). This is the one place the app updates an existing row
+   instead of only appending — scoped narrowly to just those fields, on a row that
+   is still Open, identified by a private session id rather than row position. */
+async function fetchOpenSessions(sheetName, fallbackKey, operatorFilter){
+  if(STATE.config.sheetsUrl){
+    try{
+      const url = STATE.config.sheetsUrl + '?action=openSessions&sheet=' + encodeURIComponent(sheetName) +
+        (operatorFilter ? ('&operator=' + encodeURIComponent(operatorFilter)) : '');
+      const data = await sheetsFetch(url);
+      return Array.isArray(data) ? data : [];
+    }catch(e){ console.error("openSessions fetch failed", e); return []; }
+  } else {
+    const list = await storageGet(fallbackKey, []);
+    return list
+      .filter(e => e.sessionStatus==="Open" && (!operatorFilter || (e.operator||"").trim().toLowerCase()===operatorFilter.trim().toLowerCase()))
+      .map(e => ({ sessionId:e.sessionId, date:e.date, startTime:e.startTime, operator:e.operator, activity:e.activity }));
+  }
+}
+async function closeSession(sheetName, sessionId, localUpdates, fallbackKey){
+  if(STATE.config.sheetsUrl){
+    const headerUpdates = {
+      "End Time": localUpdates.endTime,
+      "Equipment Status": localUpdates.status,
+      "Notes": localUpdates.notes,
+      "Session Status": "Closed",
+      "Completed At": localUpdates.completedAt
+    };
+    try{
+      const data = await sheetsFetch(STATE.config.sheetsUrl, {
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({ action:'closeSession', sheet: sheetName, sessionId, updates: headerUpdates })
+      });
+      return data;
+    }catch(e){ console.error("closeSession failed", e); return {ok:false, error:"Network error"}; }
+  } else {
+    const list = await storageGet(fallbackKey, []);
+    const idx = list.findIndex(e=>e.sessionId===sessionId);
+    if(idx===-1) return {ok:false, error:"Session not found"};
+    if(list[idx].sessionStatus==="Closed") return {ok:false, error:"Session already closed"};
+    Object.assign(list[idx], {
+      endTime: localUpdates.endTime, status: localUpdates.status, notes: localUpdates.notes,
+      completedAt: localUpdates.completedAt, sessionStatus: "Closed"
+    });
+    await storageSet(fallbackKey, list);
+    return {ok:true};
+  }
+}
+
+let STATE = {
+  screen: "home",       // home | equipmentForm | dailyForm | records | admin | share
+  selection: "",
+  config: null,
+  submissions: {},       // cache: equipmentId -> array, 'daily' -> array
+  recordsTarget: "daily",
+  search: "",
+  banner: "",
+  adminUnlocked: false,  // Admin password gate resets every page load
+  eqFlow: null,          // check-in/out flow state for the equipment form: {step, operatorName, openSession, blockingSession}
+  dailyFlow: null,       // {step: "loading"|"form"|"blocked", existing} — limits the checklist to one submission per day
+  dashboardData: null    // cached computed stats/open-issues for the Dashboard tab
+};
+
+function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
+function nowParts(){
+  const d=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  };
+}
+
+/* ============================= ONBOARDING WALKTHROUGH ============================= */
+const INTRO_STEPS = [
+  {
+    title: "Scan the QR code",
+    body: "Anyone in the lab can scan the posted QR code to open this page directly — no login, no app to install.",
+    icon: `<svg width="90" height="90" viewBox="0 0 90 90" fill="none">
+      <rect x="8" y="8" width="74" height="74" rx="4" stroke="#20242A" stroke-width="2"/>
+      <rect x="16" y="16" width="16" height="16" fill="#20242A"/>
+      <rect x="58" y="16" width="16" height="16" fill="#20242A"/>
+      <rect x="16" y="58" width="16" height="16" fill="#20242A"/>
+      <rect x="40" y="40" width="10" height="10" fill="#C07A2C"/>
+      <rect x="56" y="56" width="6" height="6" fill="#20242A"/>
+      <rect x="66" y="40" width="6" height="6" fill="#20242A"/>
+      <line class="intro-scanline" x1="12" y1="45" x2="78" y2="45" stroke="#C07A2C" stroke-width="3"/>
+    </svg>`
+  },
+  {
+    title: "Choose what you're logging",
+    body: "Pick the Daily Checklist or a piece of equipment from the dropdown — the right form opens automatically.",
+    icon: `<svg width="120" height="90" viewBox="0 0 120 90" fill="none">
+      <rect x="10" y="10" width="100" height="70" rx="4" stroke="#20242A" stroke-width="2"/>
+      <rect class="intro-item" x="20" y="24" width="80" height="12" rx="2" fill="#F1DDB8"/>
+      <rect class="intro-item" x="20" y="42" width="80" height="12" rx="2" fill="#D9ECE6"/>
+      <rect class="intro-item" x="20" y="60" width="50" height="12" rx="2" fill="#F3EFE6" stroke="#D9D2C1"/>
+    </svg>`
+  },
+  {
+    title: "Fill in the short form",
+    body: "Dropdowns and tap-to-select fields keep it quick — most entries take under a minute.",
+    icon: `<svg width="110" height="90" viewBox="0 0 110 90" fill="none">
+      <rect x="8" y="8" width="94" height="74" rx="4" stroke="#20242A" stroke-width="2"/>
+      <rect x="20" y="22" width="45" height="6" rx="2" fill="#5B6672"/>
+      <rect x="20" y="34" width="70" height="10" rx="2" fill="#D9D2C1"/>
+      <rect x="20" y="52" width="45" height="6" rx="2" fill="#5B6672"/>
+      <rect x="20" y="64" width="55" height="10" rx="2" fill="#D9D2C1"/>
+      <rect class="intro-cursor" x="76" y="64" width="2" height="10" fill="#C07A2C"/>
+    </svg>`
+  },
+  {
+    title: "Submitted — nothing is ever overwritten",
+    body: "Your entry is added as a new row directly in the lab's Google Sheet, with date and time filled in automatically.",
+    icon: `<svg width="110" height="90" viewBox="0 0 110 90" fill="none">
+      <rect x="8" y="10" width="94" height="70" rx="4" stroke="#20242A" stroke-width="2"/>
+      <line x1="8" y1="30" x2="102" y2="30" stroke="#D9D2C1" stroke-width="2"/>
+      <line x1="8" y1="48" x2="102" y2="48" stroke="#D9D2C1" stroke-width="2"/>
+      <rect class="intro-row" x="14" y="52" width="82" height="12" rx="2" fill="#D9ECE6"/>
+      <circle class="intro-check" cx="90" cy="20" r="14" fill="#2F6F63"/>
+      <path class="intro-check" d="M83 20l4.5 4.5L98 14" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`
+  }
+];
+
+function shouldShowIntro(){
+  try{ return !localStorage.getItem("lls:seenIntro"); }catch(e){ return false; }
+}
+function markIntroSeen(){
+  try{ localStorage.setItem("lls:seenIntro","1"); }catch(e){}
+}
+function showIntroOverlay(){
+  let step = 0;
+  const overlay = document.createElement('div');
+  overlay.className = "intro-overlay";
+  document.body.appendChild(overlay);
+
+  function renderStep(){
+    const s = INTRO_STEPS[step];
+    overlay.innerHTML = `
+      <div class="intro-card">
+        <div class="intro-icon-wrap">${s.icon}</div>
+        <h2 class="intro-title">${s.title}</h2>
+        <p class="intro-body">${s.body}</p>
+        <div class="intro-dots">${INTRO_STEPS.map((_,i)=>`<div class="intro-dot ${i===step?'active':''}"></div>`).join('')}</div>
+        <div class="intro-btnrow">
+          <button class="intro-skip">Skip</button>
+          <button class="intro-next">${step===INTRO_STEPS.length-1 ? "Get started" : "Next"}</button>
+        </div>
+      </div>
+    `;
+    overlay.querySelector('.intro-skip').onclick = close;
+    overlay.querySelector('.intro-next').onclick = ()=>{
+      if(step < INTRO_STEPS.length-1){ step++; renderStep(); }
+      else { close(); }
+    };
+  }
+  function close(){
+    markIntroSeen();
+    overlay.remove();
+  }
+  renderStep();
+}
+
+/* ============================= BOOTSTRAP ============================= */
+/* ============================= BOOTSTRAP ============================= */
+async function boot(){
+  let cfg = await storageGet("config", null);
+  // Merge with defaults so a config saved before a new field existed (e.g. dailyItems,
+  // added later) gets backfilled instead of leaving that field undefined and crashing
+  // whatever screen first reads it.
+  cfg = Object.assign({}, DEFAULT_CONFIG, cfg || {});
+  STATE.config = cfg;
+  await storageSet("config", STATE.config);
+  render();
+  // Pull the latest shared equipment list / lab name from the Sheet (if connected),
+  // then re-render once that's back — this is what keeps every device in sync.
+  await syncConfigFromSheet();
+  await storageSet("config", STATE.config);
+  render();
+  if(shouldShowIntro()) showIntroOverlay();
+}
+
+
+/* ============================= RENDER SHELL ============================= */
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML = "";
+  app.appendChild(renderTopbar());
+  app.appendChild(renderTabs());
+  const main = document.createElement('main');
+  main.appendChild(renderScreen());
+  app.appendChild(main);
+}
+
+function renderTopbar(){
+  return el(`
+    <div class="topbar">
+      <div class="topbar-row">
+        <div class="brand">${STATE.config.labName}
+          <small>Digital Logbook System</small>
+        </div>
+        <div class="id-tag">Room A501</div>
+      </div>
+    </div>
+  `);
+}
+
+function renderTabs(){
+  const tabs = [
+    {k:"home", label:"Log Entry"},
+    {k:"records", label:"Records"},
+    {k:"share", label:"QR / Share"},
+    {k:"admin", label:"Admin"}
+  ];
+  const nav = el(`<nav class="tabs"></nav>`);
+  tabs.forEach(t=>{
+    const active = (STATE.screen===t.k) || (t.k==="home" && (STATE.screen==="equipmentForm"||STATE.screen==="dailyForm"));
+    const b = el(`<button class="${active?'active':''}">${t.label}</button>`);
+    b.onclick = ()=>{
+      STATE.banner="";
+      if(t.k==="dashboard"){ goToDashboard(); } else { STATE.screen = t.k; render(); }
+    };
+    nav.appendChild(b);
+  });
+  return nav;
+}
+
+function renderScreen(){
+  switch(STATE.screen){
+    case "home": return screenHome();
+    case "equipmentForm": return screenEquipmentForm();
+    case "dailyForm": return screenDailyForm();
+    case "records": return screenRecords();
+    case "share": return screenShare();
+    case "admin": return screenAdmin();
+    default: return screenHome();
+  }
+}
+
+/* ============================= HOME / SELECTOR ============================= */
+function screenHome(){
+  const wrap = el(`<div></div>`);
+  if(STATE.banner){
+    wrap.appendChild(el(`<div class="banner">${STATE.banner}</div>`));
+  }
+  if(!STATE.config.sheetsUrl){
+    wrap.appendChild(el(`<div class="banner" style="background:#f1ddb8;border-color:#c07a2c;color:#c07a2c;">Not yet connected to a Google Sheet — records are stored in this app's built-in storage. Connect one anytime from the Admin tab.</div>`));
+  }
+  const card = el(`
+    <div class="card">
+      <p class="eyebrow">Start here</p>
+      <h1>What are you logging?</h1>
+      <p class="lead">Select the daily checklist or a piece of equipment. The right form will open automatically.</p>
+    </div>
+  `);
+  const selectWrap = el(`<div class="card"></div>`);
+  const label = el(`<label class="field"><span class="lbl">Select an entry type</span></label>`);
+  const sel = document.createElement('select');
+  sel.appendChild(el(`<option value="">— Choose —</option>`));
+  sel.appendChild(el(`<option value="__daily__">Daily Laboratory Checklist</option>`));
+  STATE.config.equipment.forEach(eq=>{
+    sel.appendChild(el(`<option value="${eq.id}">${eq.name}</option>`));
+  });
+  sel.onchange = ()=>{
+    if(sel.value === "__daily__"){ goToDailyForm(); }
+    else if(sel.value){ STATE.selection = sel.value; STATE.eqFlow = {step:"name", operatorName:""}; STATE.screen="equipmentForm"; render(); }
+  };
+  label.appendChild(sel);
+  selectWrap.appendChild(label);
+  wrap.appendChild(card);
+  wrap.appendChild(selectWrap);
+
+  const statusCard = el(`<div class="card"><h2>Equipment status</h2><div class="eq-status-holder"><p class="lead">Checking…</p></div></div>`);
+  wrap.appendChild(statusCard);
+  (async ()=>{
+    const holder = statusCard.querySelector('.eq-status-holder');
+    holder.innerHTML = "";
+    for(const eq of STATE.config.equipment){
+      const open = await fetchOpenSessions(eq.name, "log:"+eq.id, null);
+      const row = el(`<div class="eq-row"><div class="eq-name">${eq.name}</div></div>`);
+      if(open.length){
+        const s = open[open.length-1];
+        row.appendChild(el(`<span class="status-pill status-warn">In use — ${s.operator} since ${s.startTime}</span>`));
+      } else {
+        row.appendChild(el(`<span class="status-pill status-ok">Available</span>`));
+      }
+      holder.appendChild(row);
+    }
+  })();
+
+  const replayWrap = el(`<div style="text-align:center;padding:6px 0 4px;"></div>`);
+  const replayBtn = el(`<button class="replay-link">How does this work?</button>`);
+  replayBtn.onclick = ()=> showIntroOverlay();
+  replayWrap.appendChild(replayBtn);
+  wrap.appendChild(replayWrap);
+
+  return wrap;
+}
+
+/* ============================= EQUIPMENT FORM (check-in / check-out) ============================= */
+function screenEquipmentForm(){
+  const eq = STATE.config.equipment.find(e=>e.id===STATE.selection);
+  if(!eq){ STATE.screen="home"; return screenHome(); }
+  if(!STATE.eqFlow) STATE.eqFlow = {step:"name", operatorName:""};
+
+  switch(STATE.eqFlow.step){
+    case "name":    return screenEqName(eq);
+    case "loading": return el(`<div class="card"><p class="lead">Checking for an open session…</p></div>`);
+    case "start":   return screenEqStart(eq);
+    case "finish":  return screenEqFinish(eq);
+    case "blocked": return screenEqBlocked(eq);
+    default:        return screenEqName(eq);
+  }
+}
+
+function screenEqName(eq){
+  const wrap = el(`<div></div>`);
+  wrap.appendChild(el(`
+    <div class="card">
+      <p class="eyebrow">Equipment log</p>
+      <h1>${eq.name}</h1>
+      <p class="lead">Enter your name to start a new session, or to log the end time on a session you started earlier.</p>
+    </div>
+  `));
+  const card = el(`<div class="card"></div>`);
+  const nameInput = el(`<input type="text" required placeholder="Full name or initials" value="${STATE.eqFlow.operatorName||''}">`);
+  card.appendChild(wrapField("Your name", nameInput));
+  const btnRow = el(`<div class="btnrow"></div>`);
+  const nextBtn = el(`<button class="primary">Continue</button>`);
+  const cancelBtn = el(`<button type="button" class="secondary">Cancel</button>`);
+  cancelBtn.onclick = ()=>{ STATE.screen="home"; render(); };
+  btnRow.appendChild(nextBtn); btnRow.appendChild(cancelBtn);
+  card.appendChild(btnRow);
+
+  const proceed = async ()=>{
+    const name = nameInput.value.trim();
+    if(!name) return;
+    STATE.eqFlow.operatorName = name;
+    STATE.eqFlow.step = "loading";
+    render();
+    const [mine, allOpen] = await Promise.all([
+      fetchOpenSessions(eq.name, "log:"+eq.id, name),
+      fetchOpenSessions(eq.name, "log:"+eq.id, null)
+    ]);
+    if(mine.length){
+      STATE.eqFlow.openSession = mine[mine.length-1];
+      STATE.eqFlow.step = "finish";
+    } else if(allOpen.length){
+      STATE.eqFlow.blockingSession = allOpen[allOpen.length-1];
+      STATE.eqFlow.step = "blocked";
+    } else {
+      STATE.eqFlow.step = "start";
+    }
+    render();
+  };
+  nextBtn.onclick = proceed;
+  nameInput.addEventListener('keydown', e=>{ if(e.key==="Enter"){ e.preventDefault(); proceed(); } });
+
+  wrap.appendChild(card);
+  return wrap;
+}
+
+function screenEqBlocked(eq){
+  const b = STATE.eqFlow.blockingSession;
+  const wrap = el(`<div></div>`);
+  wrap.appendChild(el(`
+    <div class="card">
+      <p class="eyebrow">Equipment log</p>
+      <h1>${eq.name} is currently in use</h1>
+      <p class="lead">A session was started by <strong>${b.operator}</strong> on ${b.date} at ${b.startTime} (${b.activity||"activity not specified"}) and hasn't been closed out yet. A new session can't start until that one is completed.</p>
+      <p class="lead">If that's you, go back and enter the exact same name you used to start it. If it's someone else and this equipment isn't actually in use, ask a lab administrator to close it out from the Admin tab.</p>
+    </div>
+  `));
+  const btnRow = el(`<div class="btnrow"></div>`);
+  const backBtn = el(`<button class="secondary">Back</button>`);
+  backBtn.onclick = ()=>{ STATE.eqFlow = {step:"name", operatorName:STATE.eqFlow.operatorName}; render(); };
+  const homeBtn = el(`<button class="ghost">Return home</button>`);
+  homeBtn.onclick = ()=>{ STATE.screen="home"; render(); };
+  btnRow.appendChild(backBtn); btnRow.appendChild(homeBtn);
+  wrap.appendChild(el(`<div class="card"></div>`)).appendChild(btnRow);
+  return wrap;
+}
+
+function screenEqStart(eq){
+  const t = nowParts();
+  const wrap = el(`<div></div>`);
+  wrap.appendChild(el(`
+    <div class="card">
+      <p class="eyebrow">Equipment log — start</p>
+      <h1>${eq.name}</h1>
+      <p class="lead">Starting a session as <strong>${STATE.eqFlow.operatorName}</strong>. Come back and select this equipment again under the same name when you're done, to log the end time.</p>
+    </div>
+  `));
+  const form = document.createElement('form');
+  const card = el(`<div class="card"></div>`);
+  form.appendChild(card);
+
+  const dateInput = el(`<input type="date" required value="${t.date}">`);
+  const startInput = el(`<input type="time" required value="${t.time}">`);
+  card.appendChild(wrapField("Date", dateInput));
+  card.appendChild(wrapField("Start time", startInput));
+
+  let humidityInput=null, tempInput=null;
+  if(eq.envFields){
+    humidityInput = el(`<input type="number" step="0.1" required placeholder="e.g. 22">`);
+    tempInput = el(`<input type="number" step="0.1" required placeholder="e.g. 23.1">`);
+    card.appendChild(wrapField("Humidity (%)", humidityInput));
+    card.appendChild(wrapField("Temperature (°C)", tempInput));
+  }
+
+  const activitySel = document.createElement('select');
+  ["Sample Measurement","Calibration","Cleaning","Training / Onboarding","Preventive Maintenance","Repair","Other"].forEach(o=>{
+    activitySel.appendChild(el(`<option value="${o}">${o}</option>`));
+  });
+  card.appendChild(wrapField("Activity", activitySel));
+  const activityOther = el(`<input type="text" placeholder="Describe activity">`);
+  const activityOtherWrap = wrapField("Activity — other, please describe", activityOther);
+  activityOtherWrap.style.display="none";
+  activitySel.onchange = ()=>{ activityOtherWrap.style.display = activitySel.value==="Other" ? "block":"none"; };
+  card.appendChild(activityOtherWrap);
+
+  const btnRow = el(`<div class="btnrow"></div>`);
+  const submitBtn = el(`<button type="submit" class="primary">Start session</button>`);
+  const backBtn = el(`<button type="button" class="secondary">Back</button>`);
+  backBtn.onclick = ()=>{ STATE.eqFlow = {step:"name", operatorName:STATE.eqFlow.operatorName}; render(); };
+  btnRow.appendChild(submitBtn); btnRow.appendChild(backBtn);
+  card.appendChild(btnRow);
+
+  form.onsubmit = async (e)=>{
+    e.preventDefault();
+    submitBtn.disabled = true; submitBtn.textContent = "Saving...";
+    const entry = {
+      submittedAt: new Date().toISOString(),
+      date: dateInput.value,
+      startTime: startInput.value,
+      endTime: "",
+      operator: STATE.eqFlow.operatorName,
+      humidity: humidityInput ? humidityInput.value : "",
+      temp: tempInput ? tempInput.value : "",
+      activity: activitySel.value==="Other" ? (activityOther.value||"Other") : activitySel.value,
+      status: "",
+      notes: "",
+      sessionId: generateSessionId(),
+      sessionStatus: "Open",
+      completedAt: ""
+    };
+    const ok = await appendSubmission(eq.name, equipmentEntryToRow(entry), "log:"+eq.id, entry);
+    submitBtn.disabled = false; submitBtn.textContent = "Start session";
+    if(ok){
+      STATE.banner = `Session started on ${eq.name} — select it again under your name when finished to log the end time.`;
+      STATE.eqFlow = null;
+      STATE.screen = "home";
+      render();
+    } else {
+      alert("Could not save. Check your connection and try again.");
+    }
+  };
+
+  wrap.appendChild(form);
+  return wrap;
+}
+
+function screenEqFinish(eq){
+  const t = nowParts();
+  const s = STATE.eqFlow.openSession;
+  const wrap = el(`<div></div>`);
+  wrap.appendChild(el(`
+    <div class="card">
+      <p class="eyebrow">Equipment log — finish</p>
+      <h1>${eq.name}</h1>
+      <p class="lead">Closing out the session <strong>${STATE.eqFlow.operatorName}</strong> started on ${s.date} at ${s.startTime}${s.activity ? (" — "+s.activity) : ""}.</p>
+    </div>
+  `));
+  const form = document.createElement('form');
+  const card = el(`<div class="card"></div>`);
+  form.appendChild(card);
+
+  const endInput = el(`<input type="time" required value="${t.time}">`);
+  card.appendChild(wrapField("End time", endInput));
+
+  const statusSel = document.createElement('select');
+  ["Operational","Operational — issue noted","Maintenance required","Out of service"].forEach(o=>statusSel.appendChild(el(`<option>${o}</option>`)));
+  card.appendChild(wrapField("Equipment status", statusSel));
+
+  const notesBox = el(`<textarea placeholder="Describe any issue, maintenance performed, or other notes for the next user"></textarea>`);
+  card.appendChild(wrapField("Notes", notesBox));
+
+  const btnRow = el(`<div class="btnrow"></div>`);
+  const submitBtn = el(`<button type="submit" class="primary">Finish session</button>`);
+  const backBtn = el(`<button type="button" class="secondary">Back</button>`);
+  backBtn.onclick = ()=>{ STATE.eqFlow = {step:"name", operatorName:STATE.eqFlow.operatorName}; render(); };
+  btnRow.appendChild(submitBtn); btnRow.appendChild(backBtn);
+  card.appendChild(btnRow);
+
+  form.onsubmit = async (e)=>{
+    e.preventDefault();
+    submitBtn.disabled = true; submitBtn.textContent = "Saving...";
+    const result = await closeSession(eq.name, s.sessionId, {
+      endTime: endInput.value,
+      status: statusSel.value,
+      notes: notesBox.value,
+      completedAt: new Date().toISOString()
+    }, "log:"+eq.id);
+    submitBtn.disabled = false; submitBtn.textContent = "Finish session";
+    if(result && result.ok){
+      STATE.banner = `Session closed on ${eq.name} — logged ${s.startTime} to ${endInput.value}.`;
+      STATE.eqFlow = null;
+      STATE.screen = "home";
+      render();
+    } else {
+      alert((result && result.error) ? result.error : "Could not save. Check your connection and try again.");
+    }
+  };
+
+  wrap.appendChild(form);
+  return wrap;
+}
+
+function wrapField(labelText, inputEl){
+  const f = document.createElement('label');
+  f.className = "field";
+  const s = document.createElement('span');
+  s.className = "lbl"; s.textContent = labelText;
+  f.appendChild(s);
+  f.appendChild(inputEl);
+  return f;
+}
+
+/* ============================= DAILY CHECKLIST FORM ============================= */
+function screenDailyForm(){
+  if(!STATE.dailyFlow || STATE.dailyFlow.step==="loading"){
+    return el(`<div class="card"><p class="lead">Checking today's checklist…</p></div>`);
+  }
+  if(STATE.dailyFlow.step==="blocked"){
+    return screenDailyBlocked();
+  }
+  const t = nowParts();
+  const wrap = el(`<div></div>`);
+  wrap.appendChild(el(`
+    <div class="card">
+      <p class="eyebrow">Daily laboratory checklist</p>
+      <h1>End-of-day shutdown check</h1>
+      <p class="lead">Set the status of every item before leaving the lab. "In Use" requires initials so others know who's using it. "Support to Turn Off" flags an item that still needs to be shut down, by you or another team member.</p>
+    </div>
+  `));
+
+  const form = document.createElement('form');
+  const card = el(`<div class="card"></div>`);
+  form.appendChild(card);
+
+  const dateInput = el(`<input type="date" required value="${t.date}">`);
+  const timeInput = el(`<input type="time" required value="${t.time}">`);
+  const nameInput = el(`<input type="text" required placeholder="Full name or initials">`);
+  card.appendChild(wrapField("Date", dateInput));
+  card.appendChild(wrapField("Time", timeInput));
+  card.appendChild(wrapField("Checked by (name)", nameInput));
+
+  const itemsCard = el(`<div class="card"><h2>Machine shutdown status check</h2></div>`);
+  const rows = [];
+  STATE.config.dailyItems.forEach((label, i)=>{
+    const row = el(`
+      <div class="checklist-row">
+        <div class="num">${i+1}</div>
+        <div class="txt">${label}</div>
+      </div>
+    `);
+    const statSel = document.createElement('select');
+    ["Off","In Use","Support to Turn Off"].forEach(o=>statSel.appendChild(el(`<option>${o}</option>`)));
+    row.appendChild(statSel);
+    const initialsBox = el(`<input type="text" class="checklist-note" placeholder="Initials of who's using it">`);
+    initialsBox.style.display="none";
+    const supportNoteBox = el(`<textarea class="checklist-note" placeholder="Optional — notes for whoever completes the shutdown"></textarea>`);
+    supportNoteBox.style.display="none";
+    statSel.onchange = ()=>{
+      initialsBox.style.display = statSel.value==="In Use" ? "block":"none";
+      supportNoteBox.style.display = statSel.value==="Support to Turn Off" ? "block":"none";
+    };
+    row.appendChild(initialsBox);
+    row.appendChild(supportNoteBox);
+    itemsCard.appendChild(row);
+    rows.push({label, statSel, initialsBox, supportNoteBox});
+  });
+  wrap.appendChild(form);
+  form.appendChild(itemsCard);
+
+  const wrapUp = el(`<div class="card"></div>`);
+  const overallComments = el(`<textarea placeholder="General comments about the lab / room condition"></textarea>`);
+  wrapUp.appendChild(wrapField("Overall comments", overallComments));
+
+  const btnRow = el(`<div class="btnrow"></div>`);
+  const submitBtn = el(`<button type="submit" class="primary">Submit checklist</button>`);
+  const cancelBtn = el(`<button type="button" class="secondary">Cancel</button>`);
+  cancelBtn.onclick = ()=>{ STATE.screen="home"; render(); };
+  btnRow.appendChild(submitBtn); btnRow.appendChild(cancelBtn);
+  wrapUp.appendChild(btnRow);
+  form.appendChild(wrapUp);
+
+  form.onsubmit = async (e)=>{
+    e.preventDefault();
+    const missingInitials = rows.filter(r=>r.statSel.value==="In Use" && !r.initialsBox.value.trim());
+    if(missingInitials.length){
+      alert(`Please enter initials for: ${missingInitials.map(r=>r.label.slice(0,40)).join(", ")}`);
+      missingInitials[0].initialsBox.focus();
+      return;
+    }
+    submitBtn.disabled = true; submitBtn.textContent = "Saving...";
+    const entry = {
+      submittedAt: new Date().toISOString(),
+      date: dateInput.value,
+      time: timeInput.value,
+      userName: nameInput.value,
+      items: rows.map(r=>({
+        label: r.label,
+        status: r.statSel.value,
+        extra: r.statSel.value==="In Use" ? r.initialsBox.value.trim()
+             : r.statSel.value==="Support to Turn Off" ? r.supportNoteBox.value.trim()
+             : ""
+      })),
+      overallComments: overallComments.value
+    };
+    const ok = await appendSubmission("Daily Checklist", dailyEntryToRow(entry), "log:daily", entry);
+    submitBtn.disabled = false; submitBtn.textContent = "Submit checklist";
+    if(ok){
+      STATE.banner = `Saved — daily checklist recorded for ${entry.date}.`;
+      STATE.dailyFlow = null;
+      STATE.screen = "home";
+      render();
+    } else {
+      alert("Could not save. Check your connection and try again.");
+    }
+  };
+
+  return wrap;
+}
+
+function screenDailyBlocked(){
+  const e = STATE.dailyFlow.existing;
+  const wrap = el(`<div></div>`);
+  wrap.appendChild(el(`
+    <div class="card">
+      <p class="eyebrow">Daily laboratory checklist</p>
+      <h1>Already completed today</h1>
+      <p class="lead">Today's checklist (${e.date}) was already submitted by <strong>${e.userName}</strong> at ${e.time}. Only one daily checklist submission is allowed per day.</p>
+      ${e.overallComments ? `<p class="lead">Their comments: "${e.overallComments}"</p>` : ""}
+      <p class="lead">If something needs to be corrected or added, check the Records tab for the full entry, or contact a lab administrator.</p>
+    </div>
+  `));
+  const btnRow = el(`<div class="btnrow"></div>`);
+  const recordsBtn = el(`<button class="secondary">View in Records</button>`);
+  recordsBtn.onclick = ()=>{ STATE.recordsTarget="daily"; STATE.screen="records"; render(); };
+  const homeBtn = el(`<button class="ghost">Return home</button>`);
+  homeBtn.onclick = ()=>{ STATE.screen="home"; render(); };
+  btnRow.appendChild(recordsBtn); btnRow.appendChild(homeBtn);
+  const card = el(`<div class="card"></div>`);
+  card.appendChild(btnRow);
+  wrap.appendChild(card);
+  return wrap;
+}
+
+/* ============================= DASHBOARD ============================= */
+function monthKey(dateStr){ return dateStr ? String(dateStr).slice(0,7) : ""; } // "YYYY-MM"
+
+async function computeDashboardData(){
+  const thisMonth = nowParts().date.slice(0,7);
+  const equipmentStats = [];
+  const openIssues = [];
+
+  for(const eq of STATE.config.equipment){
+    const list = await fetchSubmissions(eq.name, "log:"+eq.id, rowToEquipmentEntry);
+    const totalUses = list.length;
+    const usesThisMonth = list.filter(r=>monthKey(r.date)===thisMonth).length;
+    const issuesThisMonth = list.filter(r=>monthKey(r.date)===thisMonth && r.status && r.status!=="Operational").length;
+    equipmentStats.push({ name: eq.name, totalUses, usesThisMonth, issuesThisMonth });
+
+    if(list.length){
+      const latest = list.slice().sort((a,b)=>(a.submittedAt||"").localeCompare(b.submittedAt||"")).pop();
+      if(latest.status && latest.status !== "Operational"){
+        openIssues.push({
+          type:"equipment", label: eq.name, status: latest.status,
+          date: latest.date, operator: latest.operator, notes: latest.notes
+        });
+      }
+    }
+  }
+
+  const dailyList = await fetchSubmissions("Daily Checklist", "log:daily", rowToDailyEntry);
+  if(dailyList.length){
+    const latestDaily = dailyList.slice().sort((a,b)=>(a.submittedAt||"").localeCompare(b.submittedAt||"")).pop();
+    latestDaily.items.filter(i=>i.status==="Support to Turn Off").forEach(i=>{
+      openIssues.push({
+        type:"checklist", label: i.label, status: "Support to Turn Off",
+        date: latestDaily.date, operator: latestDaily.userName, notes: i.extra
+      });
+    });
+  }
+
+  equipmentStats.sort((a,b)=> b.issuesThisMonth - a.issuesThisMonth || b.usesThisMonth - a.usesThisMonth);
+  return { equipmentStats, openIssues, thisMonth, generatedAt: new Date() };
+}
+
+async function goToDashboard(){
+  STATE.screen = "dashboard";
+  STATE.dashboardData = null;
+  render();
+  STATE.dashboardData = await computeDashboardData();
+  render();
+}
+
+function screenDashboard(){
+  const wrap = el(`<div></div>`);
+  wrap.appendChild(el(`
+    <div class="card">
+      <p class="eyebrow">Dashboard</p>
+      <h1>Lab activity at a glance</h1>
+      <p class="lead">Usage and flagged issues, computed from your live records. Refresh anytime — nothing here is stored separately.</p>
+    </div>
+  `));
+
+  if(!STATE.dashboardData){
+    wrap.appendChild(el(`<div class="card"><p class="lead">Loading…</p></div>`));
+    return wrap;
+  }
+  const { equipmentStats, openIssues, thisMonth } = STATE.dashboardData;
+
+  const issuesCard = el(`<div class="card"></div>`);
+  issuesCard.appendChild(el(`<h2>Open issues (${openIssues.length})</h2>`));
+  if(!openIssues.length){
+    issuesCard.appendChild(el(`<div class="empty">Nothing flagged right now — all equipment shows Operational and no checklist items are pending shutdown.</div>`));
+  } else {
+    const tw = el(`<div class="table-wrap"></div>`);
+    const table = el(`<table class="recs"><thead><tr>
+      <th>Item</th><th>Status</th><th>Date</th><th>Reported by</th><th>Notes</th>
+    </tr></thead><tbody></tbody></table>`);
+    const tbody = table.querySelector('tbody');
+    openIssues.forEach(i=>{
+      const cls = i.status==="Out of service" ? "status-bad" : "status-warn";
+      tbody.insertAdjacentHTML('beforeend', `<tr>
+        <td>${i.label}</td>
+        <td><span class="status-pill ${cls}">${i.status}</span></td>
+        <td>${i.date}</td><td>${i.operator||""}</td><td>${i.notes||""}</td>
+      </tr>`);
+    });
+    tw.appendChild(table);
+    issuesCard.appendChild(tw);
+  }
+  wrap.appendChild(issuesCard);
+
+  const statsCard = el(`<div class="card"></div>`);
+  statsCard.appendChild(el(`<h2>Usage this month (${thisMonth})</h2><p class="lead">Ranked by flagged issues this month, then by usage.</p>`));
+  const tw2 = el(`<div class="table-wrap"></div>`);
+  const table2 = el(`<table class="recs"><thead><tr>
+    <th>Equipment</th><th>Uses this month</th><th>Issues this month</th><th>Total uses (all time)</th>
+  </tr></thead><tbody></tbody></table>`);
+  const tbody2 = table2.querySelector('tbody');
+  equipmentStats.forEach(s=>{
+    tbody2.insertAdjacentHTML('beforeend', `<tr>
+      <td>${s.name}</td>
+      <td>${s.usesThisMonth}</td>
+      <td>${s.issuesThisMonth ? `<span class="status-pill status-warn">${s.issuesThisMonth}</span>` : "0"}</td>
+      <td>${s.totalUses}</td>
+    </tr>`);
+  });
+  tw2.appendChild(table2);
+  statsCard.appendChild(tw2);
+  wrap.appendChild(statsCard);
+
+  const refreshBtn = el(`<button class="secondary">Refresh</button>`);
+  refreshBtn.onclick = ()=> goToDashboard();
+  const refreshCard = el(`<div class="card"></div>`);
+  refreshCard.appendChild(refreshBtn);
+  wrap.appendChild(refreshCard);
+
+  return wrap;
+}
+
+/* ============================= RECORDS ============================= */
+function screenRecords(){
+  const wrap = el(`<div></div>`);
+  wrap.appendChild(el(`
+    <div class="card">
+      <p class="eyebrow">Records</p>
+      <h1>Search &amp; export</h1>
+      <p class="lead">Every submission lives here, grouped by log. Nothing is ever overwritten. Export any log to Excel/CSV at any time for backup or review.</p>
+    </div>
+  `));
+
+  const selCard = el(`<div class="card"></div>`);
+  const sel = document.createElement('select');
+  sel.appendChild(el(`<option value="daily">Daily Laboratory Checklist</option>`));
+  STATE.config.equipment.forEach(eq=> sel.appendChild(el(`<option value="${eq.id}">${eq.name}</option>`)));
+  sel.value = STATE.recordsTarget;
+  sel.onchange = ()=>{ STATE.recordsTarget = sel.value; render(); };
+  selCard.appendChild(wrapField("Choose a log to view", sel));
+  wrap.appendChild(selCard);
+
+  const target = STATE.recordsTarget;
+  const isDaily = target==="daily";
+  const sheetName = isDaily ? "Daily Checklist" : (STATE.config.equipment.find(e=>e.id===target)||{}).name || target;
+  const fallbackKey = isDaily ? "log:daily" : "log:"+target;
+
+  const holder = el(`<div class="card"><div class="loading">Loading records…</div></div>`);
+  wrap.appendChild(holder);
+
+  (async ()=>{
+    const list = await fetchSubmissions(sheetName, fallbackKey, isDaily ? rowToDailyEntry : rowToEquipmentEntry);
+    holder.innerHTML = "";
+    const header = el(`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;"></div>`);
+    header.appendChild(el(`<h2 style="margin:0;">${list.length} record${list.length===1?"":"s"}</h2>`));
+    const exportBtn = el(`<button class="secondary small">Export to Excel</button>`);
+    exportBtn.onclick = ()=> exportToExcel(target, list);
+    header.appendChild(exportBtn);
+    holder.appendChild(header);
+
+    const searchRow = el(`<div class="search-row"></div>`);
+    const searchInput = el(`<input type="text" placeholder="Search all fields…" value="${STATE.search}">`);
+    searchInput.oninput = ()=>{ STATE.search = searchInput.value; renderTable(); };
+    searchRow.appendChild(searchInput);
+    holder.appendChild(searchRow);
+
+    const tableHolder = el(`<div></div>`);
+    holder.appendChild(tableHolder);
+
+    function renderTable(){
+      tableHolder.innerHTML = "";
+      let rows = list;
+      const q = STATE.search.trim().toLowerCase();
+      if(q){
+        rows = list.filter(r => JSON.stringify(r).toLowerCase().includes(q));
+      }
+      if(rows.length===0){
+        tableHolder.appendChild(el(`<div class="empty">No records yet.</div>`));
+        return;
+      }
+      if(target==="daily"){
+        const tw = el(`<div class="table-wrap"></div>`);
+        const table = el(`<table class="recs"><thead><tr>
+          <th>Date</th><th>Time</th><th>Checked by</th><th>In use / pending shutdown</th><th>Comments</th>
+        </tr></thead><tbody></tbody></table>`);
+        const tbody = table.querySelector('tbody');
+        rows.slice().reverse().forEach(r=>{
+          const inUse = r.items.filter(i=>i.status==="In Use");
+          const support = r.items.filter(i=>i.status==="Support to Turn Off");
+          const flagged = inUse.length + support.length;
+          const parts = [];
+          inUse.forEach(i=> parts.push(`${i.label.slice(0,28)}… — in use (${i.extra||"no initials"})`));
+          support.forEach(i=> parts.push(`${i.label.slice(0,28)}… — pending shutdown${i.extra ? (": "+i.extra) : ""}`));
+          const flagText = parts.length ? parts.join(" | ") : "All off";
+          tbody.insertAdjacentHTML('beforeend', `<tr>
+            <td>${r.date}</td><td>${r.time}</td><td>${r.userName}</td>
+            <td>${flagged ? `<span class="status-pill status-warn">${flagged} flagged</span>` : `<span class="status-pill status-ok">All off</span>`}<br>${flagText}</td>
+            <td>${r.overallComments||""}</td>
+          </tr>`);
+        });
+        tw.appendChild(table); tableHolder.appendChild(tw);
+      } else {
+        const tw = el(`<div class="table-wrap"></div>`);
+        const table = el(`<table class="recs"><thead><tr>
+          <th>Session</th><th>Date</th><th>Start</th><th>End</th><th>Operator</th><th>Activity</th><th>Status</th><th>Notes</th>
+        </tr></thead><tbody></tbody></table>`);
+        const tbody = table.querySelector('tbody');
+        rows.slice().reverse().forEach(r=>{
+          const cls = r.status==="Operational" ? "status-ok" : (r.status==="Out of service" ? "status-bad" : "status-warn");
+          const sessionPill = r.sessionStatus==="Open"
+            ? `<span class="status-pill status-warn">Open</span>`
+            : (r.sessionStatus==="Closed" ? `<span class="status-pill status-ok">Closed</span>` : "");
+          tbody.insertAdjacentHTML('beforeend', `<tr>
+            <td>${sessionPill}</td><td>${r.date}</td><td>${r.startTime||""}</td><td>${r.endTime||""}</td><td>${r.operator}</td>
+            <td>${r.activity}</td><td>${r.status ? `<span class="status-pill ${cls}">${r.status}</span>` : ""}</td>
+            <td>${r.notes||""}</td>
+          </tr>`);
+        });
+        tw.appendChild(table); tableHolder.appendChild(tw);
+      }
+    }
+    renderTable();
+  })();
+
+  return wrap;
+}
+
+function exportToExcel(target, list){
+  let rows;
+  let filename;
+  if(target==="daily"){
+    filename = "Daily_Checklist_Log.xlsx";
+    rows = list.map(r=>{
+      const base = { Date:r.date, Time:r.time, "Checked By":r.userName, "Overall Comments":r.overallComments };
+      r.items.forEach((it,idx)=>{ base["Item "+(idx+1)] = it.status + (it.extra ? (" — "+it.extra) : ""); });
+      base["Submitted At"] = r.submittedAt;
+      return base;
+    });
+  } else {
+    const eq = STATE.config.equipment.find(e=>e.id===target);
+    filename = (eq?eq.name:target).replace(/[^a-z0-9]+/gi,"_") + "_Log.xlsx";
+    rows = list.map(r=>({
+      Date:r.date, "Start Time":r.startTime, "End Time":r.endTime, Operator:r.operator,
+      "Humidity (%)":r.humidity, "Temp (°C)":r.temp, Activity:r.activity,
+      "Equipment Status":r.status, Notes:r.notes, "Submitted At":r.submittedAt,
+      "Session ID":r.sessionId, "Session Status":r.sessionStatus, "Completed At":r.completedAt
+    }));
+  }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Log");
+  XLSX.writeFile(wb, filename);
+}
+
+/* ============================= SHARE / QR ============================= */
+function screenShare(){
+  const wrap = el(`<div></div>`);
+  wrap.appendChild(el(`
+    <div class="card">
+      <p class="eyebrow">One QR code for the whole lab</p>
+      <h1>Share this system</h1>
+      <p class="lead">Print the QR code below and post it in the lab. Anyone who scans it opens this exact page, picks an entry from the dropdown, and their submission is saved automatically — no app to install, no login.</p>
+    </div>
+  `));
+  const url = window.location.href;
+  const card = el(`<div class="card"><div class="qr-box"><div id="qrcode"></div><div class="qr-url">${url}</div></div></div>`);
+  wrap.appendChild(card);
+  setTimeout(()=>{
+    const holder = document.getElementById('qrcode');
+    if(holder && window.QRCode){
+      holder.innerHTML = "";
+      new QRCode(holder, { text: url, width: 200, height: 200, colorDark:"#20242a", colorLight:"#ffffff" });
+    } else if(holder){
+      holder.innerHTML = "<div class='empty'>QR library still loading — try reopening this tab.</div>";
+    }
+  }, 50);
+
+  const note = el(`
+    <div class="card">
+      <h2>Hosting this page</h2>
+      <p class="lead">The QR code above always encodes whatever URL is currently loaded in this browser tab. For a stable QR code you can print, host this file somewhere with a permanent address that anyone can open without logging in (e.g. GitHub Pages), then reopen this Share tab from that address before printing.</p>
+    </div>
+  `);
+  wrap.appendChild(note);
+  return wrap;
+}
+
+/* ============================= ADMIN LOCK ============================= */
+function screenAdminLock(){
+  const wrap = el(`<div></div>`);
+  wrap.appendChild(el(`
+    <div class="card">
+      <p class="eyebrow">Administrator</p>
+      <h1>Enter Password</h1>
+      <p class="lead">This area is for lab administrators only — adding/removing equipment, connecting Google Sheets, and full backups.</p>
+    </div>
+  `));
+  const card = el(`<div class="card"></div>`);
+  const pinInput = el(`<input type="password" autocomplete="off" placeholder="Enter admin password">`);
+  card.appendChild(wrapField("Password", pinInput));
+  const errorMsg = el(`<p class="lead" style="color:#a83e2c;display:none;">Incorrect password — try again.</p>`);
+  card.appendChild(errorMsg);
+  const btnRow = el(`<div class="btnrow"></div>`);
+  const unlockBtn = el(`<button class="primary">Unlock</button>`);
+  const tryUnlock = async ()=>{
+    const entered = pinInput.value;
+    unlockBtn.disabled = true; unlockBtn.textContent = "Checking...";
+    let ok;
+    if(STATE.config.sheetsUrl){
+      try{
+        const data = await sheetsFetch(STATE.config.sheetsUrl, {
+          method:'POST',
+          headers:{'Content-Type':'text/plain;charset=utf-8'},
+          body: JSON.stringify({ action:'verifyAdminPin', pin: entered })
+        });
+        ok = !!(data && data.ok);
+      }catch(e){ ok = false; }
+    } else {
+      ok = entered === (STATE.config.adminPin || "1234");
+    }
+    unlockBtn.disabled = false; unlockBtn.textContent = "Unlock";
+    if(ok){
+      STATE.config.adminPin = entered; // cache the confirmed-correct value for this session's setConfig calls
+      STATE.adminUnlocked = true;
+      render();
+    } else {
+      errorMsg.style.display = "block";
+      pinInput.value = "";
+      pinInput.focus();
+    }
+  };
+  unlockBtn.onclick = tryUnlock;
+  pinInput.addEventListener('keydown', e=>{ if(e.key === "Enter") tryUnlock(); });
+  btnRow.appendChild(unlockBtn);
+  card.appendChild(btnRow);
+  wrap.appendChild(card);
+  setTimeout(()=>pinInput.focus(), 50);
+  return wrap;
+}
+
+/* ============================= ADMIN ============================= */
+function screenAdmin(){
+  if(!STATE.adminUnlocked){
+    return screenAdminLock();
+  }
+  const wrap = el(`<div></div>`);
+  wrap.appendChild(el(`
+    <div class="card">
+      <p class="eyebrow">Administrator</p>
+      <h1>Manage equipment list</h1>
+      <p class="lead">Add a new instrument and it appears in the dropdown immediately, with its own spreadsheet. Removing an instrument here does not delete its historical records — only new entries stop being offered.</p>
+    </div>
+  `));
+
+  const sessionsCard = el(`<div class="card"><h2>Open equipment sessions</h2><p class="lead">Sessions someone started but hasn't logged an end time for yet. If someone forgot to close one out, an admin can force-close it here so the equipment isn't stuck.</p><div class="sessions-holder"><p class="lead">Checking…</p></div></div>`);
+  wrap.appendChild(sessionsCard);
+  const loadOpenSessions = async ()=>{
+    const holder = sessionsCard.querySelector('.sessions-holder');
+    const results = [];
+    for(const eq of STATE.config.equipment){
+      const open = await fetchOpenSessions(eq.name, "log:"+eq.id, null);
+      open.forEach(s => results.push({eq, s}));
+    }
+    holder.innerHTML = "";
+    if(!results.length){
+      holder.appendChild(el(`<div class="empty">No open sessions right now.</div>`));
+      return;
+    }
+    results.forEach(({eq,s})=>{
+      const row = el(`<div class="eq-row">
+        <div><div class="eq-name">${eq.name} — ${s.operator}</div><div class="eq-meta">started ${s.date} ${s.startTime}${s.activity ? (" · "+s.activity) : ""}</div></div>
+      </div>`);
+      const closeBtn = el(`<button class="ghost danger">Force close</button>`);
+      closeBtn.onclick = async ()=>{
+        if(!confirm(`Force-close this session on ${eq.name} (started by ${s.operator})? This logs an end time now with no status/notes from the original operator.`)) return;
+        const t = nowParts();
+        const result = await closeSession(eq.name, s.sessionId, {
+          endTime: t.time, status: "Operational",
+          notes: "Force-closed by administrator — operator did not log an end time.",
+          completedAt: new Date().toISOString()
+        }, "log:"+eq.id);
+        if(result && result.ok){ loadOpenSessions(); } else { alert((result&&result.error)||"Could not close this session."); }
+      };
+      row.appendChild(closeBtn);
+      holder.appendChild(row);
+    });
+  };
+  loadOpenSessions();
+
+  const sheetsCard = el(`<div class="card"><h2>Data storage — Google Sheets</h2></div>`);
+  const connected = !!STATE.config.sheetsUrl;
+  sheetsCard.appendChild(el(`
+    <div class="banner" style="background:${connected?'#d9ece6':'#f1ddb8'};border-color:${connected?'#2f6f63':'#c07a2c'};color:${connected?'#2f6f63':'#c07a2c'};">
+      ${connected ? "Connected — every submission is written directly to your Google Sheet." : "Not connected — submissions are currently saved in this app's built-in storage, not a spreadsheet you own."}
+    </div>
+  `));
+  sheetsCard.appendChild(el(`<p class="lead">To route every log entry straight into your own Google Sheet: open the "A501 Lab Log System" spreadsheet in Drive, Extensions &rarr; Apps Script, paste in the provided backend code, then Deploy &rarr; New deployment &rarr; Web app (Execute as: Me, Who has access: Anyone). Paste the resulting URL below.</p>`));
+  const sheetsUrlInput = el(`<input type="text" placeholder="https://script.google.com/macros/s/.../exec" value="${STATE.config.sheetsUrl||''}">`);
+  sheetsCard.appendChild(wrapField("Google Sheets Web App URL", sheetsUrlInput));
+  const sheetsBtnRow = el(`<div class="btnrow"></div>`);
+  const sheetsSaveBtn = el(`<button class="primary">Save &amp; connect</button>`);
+  sheetsSaveBtn.onclick = async ()=>{
+    STATE.config.sheetsUrl = sheetsUrlInput.value.trim();
+    await storageSet("config", STATE.config);
+    await syncConfigToSheet();
+    STATE.banner = STATE.config.sheetsUrl ? "Connected to your Google Sheet. New submissions will be written there." : "Disconnected — back to built-in storage.";
+    STATE.screen = "admin";
+    render();
+  };
+  sheetsBtnRow.appendChild(sheetsSaveBtn);
+  if(connected){
+    const disconnectBtn = el(`<button class="secondary">Disconnect</button>`);
+    disconnectBtn.onclick = async ()=>{
+      STATE.config.sheetsUrl = "";
+      await storageSet("config", STATE.config);
+      render();
+    };
+    sheetsBtnRow.appendChild(disconnectBtn);
+  }
+  sheetsCard.appendChild(sheetsBtnRow);
+  wrap.appendChild(sheetsCard);
+
+  const listCard = el(`<div class="card"><h2>Current equipment</h2></div>`);
+  STATE.config.equipment.forEach(eq=>{
+    const row = el(`<div class="eq-row">
+      <div><div class="eq-name">${eq.name}</div><div class="eq-meta">id: ${eq.id} ${eq.envFields ? "· humidity/temp fields on" : ""}</div></div>
+    </div>`);
+    const btns = el(`<div style="display:flex;gap:4px;"></div>`);
+    const renameBtn = el(`<button class="ghost small">Rename</button>`);
+    renameBtn.onclick = async ()=>{
+      const newName = prompt(`New name for "${eq.name}":`, eq.name);
+      if(!newName || !newName.trim() || newName.trim()===eq.name) return;
+      const trimmed = newName.trim();
+      if(STATE.config.sheetsUrl){
+        try{
+          const data = await sheetsFetch(STATE.config.sheetsUrl, {
+            method:'POST',
+            headers:{'Content-Type':'text/plain;charset=utf-8'},
+            body: JSON.stringify({ action:'renameSheet', adminPin: STATE.config.adminPin||'', oldName: eq.name, newName: trimmed })
+          });
+          if(!(data && data.ok)){
+            alert((data && data.error) || "Could not rename — try again.");
+            return;
+          }
+        }catch(e){ alert("Could not rename — check your connection and try again."); return; }
+      }
+      eq.name = trimmed;
+      await storageSet("config", STATE.config);
+      await syncConfigToSheet();
+      STATE.banner = `Renamed to "${trimmed}" — its Google Sheet tab was renamed to match, so history is preserved.`;
+      render();
+    };
+    const rm = el(`<button class="ghost danger small">Remove</button>`);
+    rm.onclick = async ()=>{
+      if(!confirm(`Remove "${eq.name}" from the dropdown? Its past records are kept and still exportable.`)) return;
+      STATE.config.equipment = STATE.config.equipment.filter(e=>e.id!==eq.id);
+      await storageSet("config", STATE.config);
+      await syncConfigToSheet();
+      render();
+    };
+    btns.appendChild(renameBtn); btns.appendChild(rm);
+    row.appendChild(btns);
+    listCard.appendChild(row);
+  });
+  wrap.appendChild(listCard);
+
+  const addCard = el(`<div class="card"><h2>Add new equipment</h2></div>`);
+  const nameInput = el(`<input type="text" placeholder="e.g. Contact Angle Meter">`);
+  addCard.appendChild(wrapField("Equipment name", nameInput));
+  const envToggle = el(`<label class="toggle-row"><input type="checkbox"><span>Include humidity / temperature fields (for instruments sensitive to ambient conditions)</span></label>`);
+  addCard.appendChild(envToggle);
+  const addBtn = el(`<button class="primary">Add equipment</button>`);
+  addBtn.onclick = async ()=>{
+    const name = nameInput.value.trim();
+    if(!name) return;
+    const id = name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') + "_" + Date.now().toString(36).slice(-4);
+    STATE.config.equipment.push({ id, name, envFields: envToggle.querySelector('input').checked });
+    await storageSet("config", STATE.config);
+    await syncConfigToSheet();
+    STATE.banner = `Added "${name}" — it now appears in the Log Entry dropdown.`;
+    STATE.screen = "home";
+    render();
+  };
+  addCard.appendChild(addBtn);
+  wrap.appendChild(addCard);
+
+  const checklistCard = el(`<div class="card"><h2>Daily checklist items</h2><p class="lead">Add, remove, or reorder the items on the Daily Checklist. Changes apply immediately for everyone.</p></div>`);
+  if(!STATE.config.dailyItems) STATE.config.dailyItems = DEFAULT_CONFIG.dailyItems.slice();
+  STATE.config.dailyItems.forEach((item, idx)=>{
+    const row = el(`<div class="eq-row">
+      <div><div class="eq-name">${idx+1}. ${item}</div></div>
+    </div>`);
+    const btns = el(`<div style="display:flex;gap:4px;"></div>`);
+    const upBtn = el(`<button class="ghost small">↑</button>`);
+    upBtn.disabled = idx===0;
+    upBtn.onclick = async ()=>{
+      const arr = STATE.config.dailyItems;
+      [arr[idx-1], arr[idx]] = [arr[idx], arr[idx-1]];
+      await storageSet("config", STATE.config);
+      await syncConfigToSheet();
+      render();
+    };
+    const downBtn = el(`<button class="ghost small">↓</button>`);
+    downBtn.disabled = idx===STATE.config.dailyItems.length-1;
+    downBtn.onclick = async ()=>{
+      const arr = STATE.config.dailyItems;
+      [arr[idx+1], arr[idx]] = [arr[idx], arr[idx+1]];
+      await storageSet("config", STATE.config);
+      await syncConfigToSheet();
+      render();
+    };
+    const editBtn = el(`<button class="ghost small">Edit</button>`);
+    editBtn.onclick = async ()=>{
+      const newText = prompt(`Edit checklist item text:`, item);
+      if(!newText || !newText.trim() || newText.trim()===item) return;
+      STATE.config.dailyItems[idx] = newText.trim();
+      await storageSet("config", STATE.config);
+      await syncConfigToSheet();
+      render();
+    };
+    const rmBtn = el(`<button class="ghost danger small">Remove</button>`);
+    rmBtn.onclick = async ()=>{
+      if(!confirm(`Remove "${item}" from the Daily Checklist? Past checklist records that already include it are unaffected.`)) return;
+      STATE.config.dailyItems = STATE.config.dailyItems.filter((_,i)=>i!==idx);
+      await storageSet("config", STATE.config);
+      await syncConfigToSheet();
+      render();
+    };
+    btns.appendChild(upBtn); btns.appendChild(downBtn); btns.appendChild(editBtn); btns.appendChild(rmBtn);
+    row.appendChild(btns);
+    checklistCard.appendChild(row);
+  });
+  wrap.appendChild(checklistCard);
+
+  const addItemCard = el(`<div class="card"><h2>Add a checklist item</h2></div>`);
+  const itemInput = el(`<input type="text" placeholder="e.g. Spin Coater">`);
+  addItemCard.appendChild(wrapField("Item text", itemInput));
+  const addItemBtn = el(`<button class="primary">Add item</button>`);
+  addItemBtn.onclick = async ()=>{
+    const text = itemInput.value.trim();
+    if(!text) return;
+    STATE.config.dailyItems.push(text);
+    await storageSet("config", STATE.config);
+    await syncConfigToSheet();
+    STATE.banner = `Added "${text}" to the Daily Checklist.`;
+    render();
+  };
+  addItemCard.appendChild(addItemBtn);
+  wrap.appendChild(addItemCard);
+
+  const labCard = el(`<div class="card"><h2>Lab name</h2></div>`);
+  const labInput = el(`<input type="text" value="${STATE.config.labName}">`);
+  labCard.appendChild(wrapField("Displayed at the top of the app", labInput));
+  const labBtn = el(`<button class="secondary">Save name</button>`);
+  labBtn.onclick = async ()=>{
+    STATE.config.labName = labInput.value.trim() || STATE.config.labName;
+    await storageSet("config", STATE.config);
+    await syncConfigToSheet();
+    render();
+  };
+  labCard.appendChild(labBtn);
+  wrap.appendChild(labCard);
+
+  const pinCard = el(`<div class="card"><h2>Admin Password</h2><p class="lead">Change the password required to access this Admin area. Anyone with the password can add/remove equipment, change connections, and download full backups.</p></div>`);
+  const pinChangeInput = el(`<input type="text" placeholder="New password" value="${STATE.config.adminPin||'1234'}">`);
+  pinCard.appendChild(wrapField("Admin Password", pinChangeInput));
+  const pinChangeBtn = el(`<button class="secondary">Save Password</button>`);
+  pinChangeBtn.onclick = async ()=>{
+    const newPin = pinChangeInput.value.trim();
+    if(!newPin) return;
+    const oldPin = STATE.config.adminPin; // authenticate with the still-valid current password
+    STATE.config.adminPin = newPin;
+    await storageSet("config", STATE.config);
+    await syncConfigToSheet(oldPin);
+    STATE.banner = "Admin password updated.";
+    render();
+  };
+  pinCard.appendChild(pinChangeBtn);
+  wrap.appendChild(pinCard);
+
+  const lockBtn = el(`<button class="ghost">Lock admin area now</button>`);
+  lockBtn.onclick = ()=>{ STATE.adminUnlocked = false; STATE.screen = "admin"; render(); };
+  wrap.appendChild(lockBtn);
+
+  const bkCard = el(`<div class="card"><h2>Full backup</h2><p class="lead">Download every log — the daily checklist and every piece of equipment — as one Excel workbook with one sheet per log.</p></div>`);
+  const bkBtn = el(`<button class="secondary">Export full backup (.xlsx)</button>`);
+  bkBtn.onclick = async ()=>{
+    const wb = XLSX.utils.book_new();
+    const daily = await fetchSubmissions("Daily Checklist", "log:daily", rowToDailyEntry);
+    const dailyRows = daily.map(r=>{
+      const base = { Date:r.date, Time:r.time, "Checked By":r.userName, "Overall Comments":r.overallComments };
+      r.items.forEach((it,idx)=>{ base["Item "+(idx+1)] = it.status + (it.extra?(" — "+it.extra):""); });
+      base["Submitted At"]=r.submittedAt;
+      return base;
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dailyRows), "Daily Checklist");
+    for(const eq of STATE.config.equipment){
+      const list = await fetchSubmissions(eq.name, "log:"+eq.id, rowToEquipmentEntry);
+      const rows = list.map(r=>({
+        Date:r.date,"Start Time":r.startTime,"End Time":r.endTime,Operator:r.operator,
+        "Humidity (%)":r.humidity,"Temp (°C)":r.temp,Activity:r.activity,
+        "Equipment Status":r.status,Notes:r.notes,"Submitted At":r.submittedAt,
+        "Session ID":r.sessionId,"Session Status":r.sessionStatus,"Completed At":r.completedAt
+      }));
+      const sheetName = eq.name.replace(/[\[\]\*\/\\\?:]/g,'').slice(0,31) || eq.id;
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), sheetName);
+    }
+    XLSX.writeFile(wb, "Lab_Log_Full_Backup_"+nowParts().date+".xlsx");
+  };
+  bkCard.appendChild(bkBtn);
+  wrap.appendChild(bkCard);
+
+  return wrap;
+}
+
+boot();
+</script>
+</body>
+</html>
